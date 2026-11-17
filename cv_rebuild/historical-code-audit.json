@@ -1,0 +1,132 @@
+{
+  "pins": [
+    {
+      "file": "aerial_gap_recovery.py",
+      "expected": "04f512824db74611e8db7d0e046905add303f426a4b00a8c53c2e34667cdfc3d",
+      "actual": "04f512824db74611e8db7d0e046905add303f426a4b00a8c53c2e34667cdfc3d",
+      "match": true
+    },
+    {
+      "file": "bidirectional_gap_recovery.py",
+      "expected": "1fa3e379d9927af8599a9d10291be0b9da2478c813e2dd91bb93f194c0ecc858",
+      "actual": "1fa3e379d9927af8599a9d10291be0b9da2478c813e2dd91bb93f194c0ecc858",
+      "match": true
+    },
+    {
+      "file": "short_gap_ball_recovery.py",
+      "expected": "5ebe4e3d13064939bae678d8a8a20898bc36453873905db6ae752bcb4fca44c0",
+      "actual": "5ebe4e3d13064939bae678d8a8a20898bc36453873905db6ae752bcb4fca44c0",
+      "match": true
+    },
+    {
+      "file": "refresh_candidate_gaps.py",
+      "expected": "42f98315899da54149de5811326daaa3f3c823d0173b7d129554796263aea69b",
+      "actual": "42f98315899da54149de5811326daaa3f3c823d0173b7d129554796263aea69b",
+      "match": true
+    },
+    {
+      "file": "distractor_memory.py",
+      "expected": "9c6fe7f1ce8aad0b38d3ace7f14f65dcd30679bdee5dde9aafe48eb454332f9f",
+      "actual": "9c6fe7f1ce8aad0b38d3ace7f14f65dcd30679bdee5dde9aafe48eb454332f9f",
+      "match": true
+    },
+    {
+      "file": "extend_sam_ball_tracks.py",
+      "expected": "0a25518a3c610d82dd27943d409b21cd523e070805b46364fd5697a134fb1d94",
+      "actual": "0a25518a3c610d82dd27943d409b21cd523e070805b46364fd5697a134fb1d94",
+      "match": true
+    },
+    {
+      "file": "audit_ball_anchors.py",
+      "expected": "27e182146807542412bb58e99abc7e86314bdacdf0ae70025dcec204a997fb6a",
+      "actual": "27e182146807542412bb58e99abc7e86314bdacdf0ae70025dcec204a997fb6a",
+      "match": true
+    },
+    {
+      "file": "track_penalty_spots.py",
+      "expected": "5c6d99a9a4e61adb8cc4d7674f1556a713663f5d333188ed45a4ecb4683e6a14",
+      "actual": "5c6d99a9a4e61adb8cc4d7674f1556a713663f5d333188ed45a4ecb4683e6a14",
+      "match": true
+    },
+    {
+      "file": "crowded_ball_zoom.py",
+      "expected": "a002eeb55ce234f1b7401a6e0a18c6053781a2b5df84571d151891f5223a4846",
+      "actual": "a002eeb55ce234f1b7401a6e0a18c6053781a2b5df84571d151891f5223a4846",
+      "match": true
+    },
+    {
+      "file": "player_context_zoom.py",
+      "expected": "abec2cf17894de548609cc7816afb1f3268dbfc3aaa0b9fd7e42e634ec14943c",
+      "actual": "abec2cf17894de548609cc7816afb1f3268dbfc3aaa0b9fd7e42e634ec14943c",
+      "match": true
+    },
+    {
+      "file": "reacquire_ball_tracklets.py",
+      "expected": "5c772120d84cc08947e14d5c27b45b4a5c7cefdda921a32a20691a355e002dcb",
+      "actual": "5c772120d84cc08947e14d5c27b45b4a5c7cefdda921a32a20691a355e002dcb",
+      "match": true
+    },
+    {
+      "file": "smooth_candidate_window.py",
+      "expected": "c94839bb64a5729e6e52cf05419c50723132ab99dbfbb82a33f4a2e81acf190a",
+      "actual": "c94839bb64a5729e6e52cf05419c50723132ab99dbfbb82a33f4a2e81acf190a",
+      "match": true
+    },
+    {
+      "file": "recover_blank_tracks.py",
+      "expected": "987f2fbc812d99ad12099c236a85873cd0fff55516ba19d24cbcc578e23bd88d",
+      "actual": "987f2fbc812d99ad12099c236a85873cd0fff55516ba19d24cbcc578e23bd88d",
+      "match": true
+    },
+    {
+      "file": "sam2_gap_recovery.py",
+      "expected": "14c2853b5b042c10573be3daf50e58e1e6d67a37a4e10661e41a09e03e2e87fe",
+      "actual": "14c2853b5b042c10573be3daf50e58e1e6d67a37a4e10661e41a09e03e2e87fe",
+      "match": true
+    },
+    {
+      "file": "sam2_gap_recovery_v2.py",
+      "expected": "97af5037f2a83c7ac7efd24d330bb2a1045c9b483e39633393f73d4565ef7c4d",
+      "actual": "97af5037f2a83c7ac7efd24d330bb2a1045c9b483e39633393f73d4565ef7c4d",
+      "match": true
+    },
+    {
+      "file": "ellipse_field_gate.py",
+      "expected": "5341b7df92b94d918d949faeb3e4ff40bf5daeaee67a2f61abeb48de2fc5b560",
+      "actual": "5341b7df92b94d918d949faeb3e4ff40bf5daeaee67a2f61abeb48de2fc5b560",
+      "match": true
+    },
+    {
+      "file": "image_ball_gate.py",
+      "expected": "be6eeb17005b2d7e12d28953fe1cbab8211366eb75302a6e32db94d733b9b421",
+      "actual": "be6eeb17005b2d7e12d28953fe1cbab8211366eb75302a6e32db94d733b9b421",
+      "match": true
+    },
+    {
+      "file": "field_marking_evidence.py",
+      "expected": "8934ad772b74d41f935c542cae2b00064566c743029fe8f3921e2a7c03d1bcaf",
+      "actual": "8934ad772b74d41f935c542cae2b00064566c743029fe8f3921e2a7c03d1bcaf",
+      "match": true
+    },
+    {
+      "file": "ball_continuity.py",
+      "expected": "b50359b60a8ab86547e5051e36a04f5a62346f5a352a7c5919597046c4f095c6",
+      "actual": "b50359b60a8ab86547e5051e36a04f5a62346f5a352a7c5919597046c4f095c6",
+      "match": true
+    },
+    {
+      "file": "smooth_pixel_track.py",
+      "expected": "0f163f88b61b334ac5c94e7b08262fc4be0cf0237c78b182bfd3c7208ebbda45",
+      "actual": "0f163f88b61b334ac5c94e7b08262fc4be0cf0237c78b182bfd3c7208ebbda45",
+      "match": true
+    },
+    {
+      "file": "constrained_ball_trajectory.py",
+      "expected": "d13770098b6b26a964f7cbdcac4a32c33d6c2b14d4428b920935044c522192fb",
+      "actual": "d13770098b6b26a964f7cbdcac4a32c33d6c2b14d4428b920935044c522192fb",
+      "match": true
+    }
+  ],
+  "all_recorded_effective_pins_match": true,
+  "note": "Only effective pins available in the final cache config; not proof of a fresh raw-video replay."
+}

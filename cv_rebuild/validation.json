@@ -1,0 +1,25 @@
+{
+  "status": "passed",
+  "csv_sha256": "8f18e58701252edf3253ba8b977d83f16fc111b2a7f61faac3912a5a3c214f17",
+  "rows": 199319,
+  "label_counts": {
+    "H": 74522,
+    "A": 57505,
+    "D": 67292
+  },
+  "cv_used": 265,
+  "model_observed": 113753,
+  "transitions": 574,
+  "cache_to_prediction_runtime_seconds": 107.88287474999379,
+  "prediction_runtime_seconds": 87.02209516699804,
+  "original_cv_hashes_unchanged": true,
+  "probability_validation": true,
+  "frame_validation": true,
+  "raw_video_reproduction_verified": false,
+  "answers_read": false,
+  "training": false,
+  "unit_tests_passed": 9,
+  "effective_historical_source_hashes_matched": 21,
+  "snapshot_source_files_verified": 63,
+  "note": "Cache replay and packaging validation only; no new accuracy measurement. An earlier replay was rejected because adapter code changed during inference; this completed replay uses settled code."
+}

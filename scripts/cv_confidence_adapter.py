@@ -56,11 +56,11 @@ def quality_from_rows(rows,observed,homography,pitch):
     return confidence,sigma,airborne,kind
 
 
-def run(manifest_path,features_path,cache,out,unknown_airborne_policy='require_anchors'):
+def run(manifest_path,features_path,cache,out,unknown_airborne_policy='require_anchors',data_dir=None):
     manifest_path=Path(manifest_path);features_path=Path(features_path);cache=Path(cache)
     out=private_path(out)
     if out.exists():raise ValueError('Use a new private output directory')
-    m=json.loads(manifest_path.read_text());paths=asset_paths(data_dir=str(ROOT/'data'),source='tactical')
+    m=json.loads(manifest_path.read_text());paths=asset_paths(data_dir=str(data_dir or ROOT/'data'),source='tactical')
     if m.get('training_eligible') is not False or m.get('camera')!='tactical':raise ValueError('Expected tactical inference-only manifest')
     expected={'features_sha256':features_path,'recovery_sha256':cache/'detections.jsonl',
         'recovery_config_sha256':cache/'config.json','homography_sha256':Path(paths['homography'])}
@@ -107,4 +107,5 @@ if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__)
     for name in ('manifest','features','cache','out'):p.add_argument('--'+name,required=True)
     p.add_argument('--unknown-airborne-policy',choices=['require_anchors','allow_uncertain'],default='require_anchors')
-    a=p.parse_args();print(json.dumps(run(a.manifest,a.features,a.cache,a.out,a.unknown_airborne_policy),indent=2))
+    p.add_argument('--data-dir',type=Path,help='Licensed data root; defaults to repository data/')
+    a=p.parse_args();print(json.dumps(run(a.manifest,a.features,a.cache,a.out,a.unknown_airborne_policy,a.data_dir),indent=2))

@@ -7,11 +7,12 @@ is required for Part 2 inference.
 
 ## Required private inputs
 
-The CV-supported submission requires the original licensed tactical bundle **and
-our completed private CV artifacts**. A fresh clone does not contain those
-artifacts. Exact reproduction from the raw video alone is not established because
-upstream SAM recovery is nondeterministic. Do not publish the cache or predictions
-to GitHub. The tracking-only fallback remains available explicitly.
+The CV-supported submission uses the original licensed tactical bundle. The
+**verified replay route also requires our completed private CV artifacts**.
+[CV_REBUILD.md](CV_REBUILD.md) now supplies the upstream source, checkpoint pins
+and raw-video rebuild command. Fresh raw-video byte equality has not yet been
+verified. Do not publish the cache or predictions to GitHub. The tracking-only
+fallback remains available explicitly.
 
 Place the licensed bundle under `data/tactical/`, including the original ATD text,
 metadata, homography and automatic Smart Tagging. Provide these existing files:
@@ -31,7 +32,7 @@ python3.12 -m venv .venv
   --manifest /private/exhaustive-part2-input-v1/manifest.json \
   --features /private/cv-fresh-updated-20261117-v2/02-fused.npz \
   --cache /private/cv-fresh-updated-20261117-v2/12-final \
-  --unknown-airborne-policy allow_uncertain \
+  --data-dir data --unknown-airborne-policy allow_uncertain \
   --out outputs/qualified-cv-v2
 OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 VECLIB_MAXIMUM_THREADS=2 \
   .venv/bin/python run_submission.py --data-dir data --model ensemble \
@@ -102,3 +103,6 @@ Upload the newly generated `remontada.csv` and [remontada.md](remontada.md), and
 enter this public repository URL. The public repository contains code, model
 parameters and aggregate diagnostics—not licensed match data or predictions.
 Upstream challenge code retains its notice in [challenge/LICENSE](challenge/LICENSE).
+
+
+The upstream CV source snapshot and guarded rebuild/replay commands are now provided in [CV_REBUILD.md](CV_REBUILD.md). This closes the missing-code packaging gap; a full raw-video byte-equality run remains unverified.

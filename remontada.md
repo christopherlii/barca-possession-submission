@@ -21,9 +21,9 @@ features rather than invented ball measurements.
 The updated full-match submission uses the tactical tracking backbone plus
 confidence-qualified CV observations in its missing-ball gaps. The model and
 decoder are the same frozen ensemble. The earlier tracking-only submission is
-preserved as a fallback. Exact reproduction of v2 requires the original licensed
-tracking bundle and the existing private CV cache; a fresh clone contains neither.
-The repository does not claim exact regeneration of that cache from raw video.
+preserved as a fallback. The verified replay route uses the original licensed tracking bundle and the
+existing private CV cache. A complete upstream source snapshot and raw-video
+rebuild command are now included; their end-to-end byte equality remains unverified.
 
 ## Assets and alignment
 
@@ -106,11 +106,10 @@ restart features but does not copy phase tags into possession labels.
 This is offline inference with future context, not live causal prediction.
 Tracking identity errors, long ball gaps, airborne projections, ambiguous
 challenges and differences between provider and challenge labels remain risks.
-The existing CV cache contains nondeterministic upstream SAM recovery; exact
-regeneration of that cache from a fresh video run is not established. The cache
-is required to reproduce the updated CV-supported submission, and must be supplied
-privately under the applicable data terms. The tracking-only fallback does not
-need it.
+Exact regeneration of the existing CV cache from a fresh video run is not
+established; this is an unverified rebuild, not proof of inherent nondeterminism. The verified replay uses the private cache; the supplied raw-video rebuild route
+has not completed a fresh equality check. The tracking-only fallback does not
+need the cache.
 
 ## Evaluation and reproduction
 
@@ -138,7 +137,7 @@ bundle under `data/`, then run:
   --manifest /private/exhaustive-part2-input-v1/manifest.json \
   --features /private/cv-fresh-updated-20261117-v2/02-fused.npz \
   --cache /private/cv-fresh-updated-20261117-v2/12-final \
-  --unknown-airborne-policy allow_uncertain --out outputs/qualified-cv-v2
+  --data-dir data --unknown-airborne-policy allow_uncertain --out outputs/qualified-cv-v2
 OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 VECLIB_MAXIMUM_THREADS=2 \
   .venv/bin/python run_submission.py --data-dir data --model ensemble \
   --cv-manifest outputs/qualified-cv-v2/manifest.json --out outputs/submission-v2
@@ -160,3 +159,24 @@ A=57,505, D=67,292. Full inference took 85.79s.
 A clean-checkout replay using the portable private CV bundle reproduced this
 CSV byte for byte, with identical probability and availability arrays. This
 verifies cache-based replay, not raw-video-only regeneration.
+
+
+The upstream CV source snapshot, public YOLO/SAM checkpoint downloads and pinned
+extra dependencies are provided in [CV_REBUILD.md](https://github.com/christopherlii/barca-possession-submission/blob/codex/submission/CV_REBUILD.md).
+After its setup, the complete raw-video command is:
+
+```sh
+OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 VECLIB_MAXIMUM_THREADS=2 \
+  .venv/bin/python rebuild_v2_cv.py --rebuild --data-dir data \
+  --device mps --out outputs/v2-from-video
+```
+
+It runs the 23 recorded CV stages and both adapters, then verifies the frozen
+submission hash. This repairs the missing upstream-code packaging; a full
+raw-video byte-equality run remains unverified.
+
+
+A second verification regenerated both adapters directly from the original CV
+cache and reproduced the same CSV in 107.88 seconds, including 87.02 seconds
+for possession inference. It retained all 265 CV fills and passed the official
+format, probability and frame-alignment checks. Original CV hashes were unchanged.
