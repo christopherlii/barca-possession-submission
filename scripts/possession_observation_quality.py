@@ -16,6 +16,7 @@ class QualityConfig:
     maximum_airborne_risk: float = .25
     maximum_anchor_gap_frames: int = 50
     anchor_tolerance_m: float = 2.
+    unknown_airborne_policy: str = 'require_anchors'
 
     def __post_init__(self):
         if (not 0<=self.minimum_confidence<=1 or not 0<=self.maximum_airborne_risk<=1 or
@@ -23,6 +24,8 @@ class QualityConfig:
                 not np.isfinite(self.anchor_tolerance_m) or self.anchor_tolerance_m<=0 or
                 type(self.maximum_anchor_gap_frames) is not int or self.maximum_anchor_gap_frames<1):
             raise ValueError('Invalid observation quality configuration')
+        if self.unknown_airborne_policy not in ('require_anchors', 'allow_uncertain'):
+            raise ValueError('Unknown airborne policy')
 
 
 def anchor_support(baseline,cv,blocks,config=QualityConfig()):
@@ -65,7 +68,8 @@ def select_observations(baseline,cv,confidence,ground_sigma_m,airborne_risk,bloc
     confident=np.isfinite(confidence)&(confidence>=config.minimum_confidence)
     localized=np.isfinite(ground_sigma_m)&(ground_sigma_m<=config.maximum_ground_sigma_m)
     airborne_known=np.isfinite(airborne_risk)
-    ground_supported=np.where(airborne_known,airborne_risk<=config.maximum_airborne_risk,anchors)
+    unknown_supported = anchors if config.unknown_airborne_policy == 'require_anchors' else np.ones(n, bool)
+    ground_supported=np.where(airborne_known,airborne_risk<=config.maximum_airborne_risk,unknown_supported)
     eligible=cv_seen&confident&localized&ground_supported
     fill=~baseline_seen&eligible
     selected=baseline.copy();selected[fill]=cv[fill]
@@ -79,4 +83,5 @@ def select_observations(baseline,cv,confidence,ground_sigma_m,airborne_risk,bloc
     return selected,dict(image_observed=cv_seen,baseline_observed=baseline_seen,
         ground_observed=np.isfinite(selected).all(1),cv_eligible=eligible,cv_used=fill,
         confidence_known=np.isfinite(confidence),airborne_known=airborne_known,
+        ground_projection_uncertain=cv_seen&~airborne_known,
         short_anchor_supported=anchors,anchor_residual_m=residual,decision=reason)

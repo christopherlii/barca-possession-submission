@@ -1,5 +1,6 @@
 """Regenerate Remontada possession predictions without reading any answer key."""
 import argparse
+from dataclasses import asdict
 import json
 from pathlib import Path
 import sys
@@ -16,6 +17,7 @@ from control_motion import tracking_arrays
 from games import GAME, GAMES, asset_paths, half_video_blocks
 from sequence_decoder import team_of_each_track
 from stage1_cv_baseline import digest, private_path
+from possession_observation_quality import QualityConfig
 
 
 def attach_cv(players, ball, teams, path):
@@ -26,6 +28,8 @@ def attach_cv(players, ball, teams, path):
         raise ValueError('Expected inference-only tactical CV at 25 fps')
     if m.get('quality_policy_sha256') != digest(ROOT/'scripts/possession_observation_quality.py'):
         raise ValueError('Expected the externally tested, frozen quality policy')
+    if m.get('quality_policy') != asdict(QualityConfig(unknown_airborne_policy='allow_uncertain')):
+        raise ValueError('Submission v2 requires the allow_uncertain policy; regenerate the adapter with that explicit option')
     files = [path]
     for name, expected in m['quality_outputs_sha256'].items():
         p = path.parent/name
@@ -49,6 +53,7 @@ def attach_cv(players, ball, teams, path):
             raise ValueError('CV may fill only missing backbone observations')
         raw_sources = q['cv_source'].copy()
         observed = q['image_observed'].copy()
+        uncertain = q['ground_projection_uncertain'].copy()
     combined = ball.copy()
     combined[ids[use]] = xy[use]
     masks = dict(cv_available=np.zeros(len(ball), bool), cv_observed=np.zeros(len(ball), bool),
@@ -57,10 +62,16 @@ def attach_cv(players, ball, teams, path):
     masks['cv_observed'][ids] = observed
     masks['cv_used'][ids] = use
     masks['cv_source'][ids] = raw_sources
+    masks['cv_projection_uncertain'] = np.zeros(len(ball), bool)
+    masks['cv_projection_uncertain'][ids] = uncertain
     return combined, masks, files
 
 
-def run(data_dir, out, model='ensemble', cv_manifest=None):
+def run(data_dir, out, model='ensemble', cv_manifest=None, backbone_only=False):
+    if model == 'ensemble' and not cv_manifest and not backbone_only:
+        raise ValueError('Updated submission requires --cv-manifest; use --backbone-only explicitly for the preserved baseline')
+    if cv_manifest and backbone_only:
+        raise ValueError('Choose CV-supported submission or explicit backbone-only baseline')
     def guard(event, args):
         if event == 'open' and isinstance(args[0], (str, bytes)):
             name = str(args[0]).lower()
@@ -79,6 +90,7 @@ def run(data_dir, out, model='ensemble', cv_manifest=None):
     backbone_observed = np.isfinite(ball).all(1)
     input_files = [Path(paths[k]) for k in ('atd_raw', 'atd_meta')]
     masks = dict(cv_available=np.zeros(n, bool), cv_observed=np.zeros(n, bool), cv_used=np.zeros(n, bool))
+    masks['cv_projection_uncertain'] = np.zeros(n, bool)
     if cv_manifest:
         ball, masks, cv_files = attach_cv(players, ball, teams, cv_manifest)
         input_files.extend(cv_files)
@@ -152,6 +164,7 @@ def run(data_dir, out, model='ensemble', cv_manifest=None):
                   backbone_observed=int(backbone_observed.sum()), model_observed=int(np.isfinite(ball).all(1).sum()),
                   cv_available=int(masks['cv_available'].sum()), cv_observed=int(masks['cv_observed'].sum()),
                   cv_used=int(masks['cv_used'].sum()), official_format_valid=True,
+                  uncertain_cv_used=int((masks['cv_used'] & masks['cv_projection_uncertain']).sum()),
                   runtime_seconds=time.monotonic()-started, csv_sha256=digest(csv),
                   probability_sha256=digest(out/'probabilities.npz'))
     (out/'receipt.json').write_text(json.dumps(report, indent=2)+'\n')
@@ -165,5 +178,6 @@ if __name__ == '__main__':
     parser.add_argument('--out', required=True)
     parser.add_argument('--model', choices=['ensemble', 'gbdt', 'baseline'], default='ensemble')
     parser.add_argument('--cv-manifest')
+    parser.add_argument('--backbone-only', action='store_true')
     args = parser.parse_args()
-    run(args.data_dir, args.out, args.model, args.cv_manifest)
+    run(args.data_dir, args.out, args.model, args.cv_manifest, args.backbone_only)

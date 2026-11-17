@@ -1,4 +1,4 @@
-# Remontada: tactical-tracking possession inference
+# Remontada: CV-supported possession inference
 
 ## Approach and submitted system
 
@@ -18,12 +18,12 @@ motion-feature and float16 player-feature conventions. Missing coordinates remai
 missing observations; numerical feature defaults are paired with availability
 features rather than invented ball measurements.
 
-The full-match submission uses the frozen tracking backbone. We also package a
-separate experimental full-match CV-enhanced output and the existing five-minute
-LightGBM prediction. Those artifacts do not replace the submitted default. The
-default is reproducible from the original licensed tracking bundle and the
-publicly included model parameters; the CV variant depends on an additional
-private, hash-verified upstream CV cache.
+The updated full-match submission uses the tactical tracking backbone plus
+confidence-qualified CV observations in its missing-ball gaps. The model and
+decoder are the same frozen ensemble. The earlier tracking-only submission is
+preserved as a fallback. Exact reproduction of v2 requires the original licensed
+tracking bundle and the existing private CV cache; a fresh clone contains neither.
+The repository does not claim exact regeneration of that cache from raw video.
 
 ## Assets and alignment
 
@@ -34,8 +34,6 @@ IDs are one-based and are converted once to zero-based video IDs. The output is
 exactly 199,319 rows, frames 0–199318, at 25 fps. Temporal processing resets at
 the supplied half boundaries. Frames outside those supplied active-period
 bounds receive D; this rule does not depend on whether CV sees a ball.
-
-The completed CV-supported variant admitted one additional ball observation and changed one H/A prediction. No supplied-match answers were used to judge that change.
 
 The primary model does not use broadcast video, audio, human match event feeds,
 public possession answers, or Smart Tagging. Broadcast is not synchronized to
@@ -49,23 +47,27 @@ detections and provenance-verified SAM recovery, rejects explicit motion/penalty
 failures, and excludes interpolated or display-estimated positions. These are
 coverage measurements, not detection-accuracy estimates.
 
-## Confidence and airborne uncertainty experiment
+## Confidence and airborne uncertainty handling
 
-A separate adapter preserves image visibility while deciding whether a point is
-usable as a ground coordinate. Available tactical observations are retained. A
-CV fill requires confidence at least .25 and localization uncertainty at most
-2 m. Known airborne risk above .25 blocks a fill. Unknown airborne state requires
-agreement within 2 m of observed endpoints bracketing at most 50 missing frames,
-inside the same temporal segment. The endpoint interpolation is a consistency
-check only; its coordinates are never fed to the model as a measurement.
+The adapter preserves image visibility while deciding whether a projected point
+can enter the existing possession features. Available tactical observations are
+retained. A CV fill requires confidence at least .25 and localization uncertainty
+at most 2 m. Known airborne risk above .25 blocks a fill. Unknown height remains
+unknown, with an explicit uncertainty mask, but no longer requires nearby tracking
+anchors. That anchor requirement prevented almost all recovery in long gaps.
+The unchanged upstream detector/mask provenance and motion/penalty rejection
+checks still apply. No display interpolation enters the model as an observation.
 
-Detector scores and a .5 verified-mask fallback are explicitly uncalibrated.
-A declared 2-pixel localization scale is propagated through the inverse
-homography. It does not estimate height. Ground-plane projection of a genuinely
-airborne image observation can still be wrong. Existing tactical coordinates can
-also be wrong. We therefore keep the experimental adapter separate from the
-reproducible tracking-only submission and do not claim it is a validated
-monocular airborne detector.
+Detector scores and a .5 verified-mask fallback are explicitly uncalibrated. A
+2-pixel localization scale is propagated through the inverse homography; it does
+not measure height. Unknown-height points can still have projection error. V2
+accepts that remaining uncertainty rather than treating unavailable height as
+proof that an observation is invalid. This is an input selection policy, not a
+newly trained height-aware model or a calibrated airborne detector.
+
+The old policy remains available as `require_anchors`. V2 explicitly selects
+`allow_uncertain`, tested with frozen thresholds/model parameters on external
+tracking stress cases and fresh synthetic matches before supplied-match inference.
 
 ## Training data and supervision
 
@@ -105,36 +107,52 @@ This is offline inference with future context, not live causal prediction.
 Tracking identity errors, long ball gaps, airborne projections, ambiguous
 challenges and differences between provider and challenge labels remain risks.
 The existing CV cache contains nondeterministic upstream SAM recovery; exact
-regeneration of that cache from a fresh video run is not established. It is not
-needed to reproduce the default submitted file.
+regeneration of that cache from a fresh video run is not established. The cache
+is required to reproduce the updated CV-supported submission, and must be supplied
+privately under the applicable data terms. The tracking-only fallback does not
+need it.
 
 ## Evaluation and reproduction
 
-Measured development and fresh synthetic-audit results are reported separately
-in `EVALUATION_REPORT.md`. Synthetic scores are not supplied-match accuracy.
-The frozen ensemble achieved 0.984322 spell F1, 0.995149 macro F1 and 0.996121
-frame accuracy on the ten fresh synthetic cases. Its clean J03WN1 development
-replay was 0.793206 / 0.952313 / 0.965407 respectively. That real match was used
-repeatedly for development, so it is not an independent accuracy estimate.
-No public supplied-match score was consulted for this submission's model or
-threshold selection. Format validation checks only the output file.
+Measured results and limitations are in `EVALUATION_REPORT.md`. The controlled
+external J03WN1 development tests improved spell F1 from .527273 to .690471
+with noisy 10-second recovery and .543345 to .695464 with noisy 30-second
+recovery. These use simulated observations on real tracking, not external video.
+The fixed policy then passed ten fresh synthetic held-out cases: spell F1
+.906930 → .975637, macro F1 .949185 → .993392, accuracy .952541 → .993758.
+Synthetic results do not establish real-match accuracy. No thresholds or models
+were tuned after this evaluation or against supplied-match labels.
 
-Install the pinned dependencies with Python 3.12, then run:
+The final adapter adds 265 CV observations to 6,615 tactical observations in the
+five-minute interval. There are 6,880 usable observations and 620 missing frames.
+All 265 fills retain an unknown-height flag. No supplied-match accuracy is claimed.
+Exact CSV replay from the private cache is checked separately from upstream CV
+regeneration: raw-video-only reproduction remains unverified, an unresolved
+limitation against the competition's bundle-only reproduction requirement.
+
+Install the pinned dependencies with Python 3.12. Place the licensed tactical
+bundle under `data/`, then run:
 
 ```sh
+.venv/bin/python scripts/cv_confidence_adapter.py \
+  --manifest /private/exhaustive-part2-input-v1/manifest.json \
+  --features /private/cv-fresh-updated-20261117-v2/02-fused.npz \
+  --cache /private/cv-fresh-updated-20261117-v2/12-final \
+  --unknown-airborne-policy allow_uncertain --out outputs/qualified-cv-v2
 OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 VECLIB_MAXIMUM_THREADS=2 \
-  .venv/bin/python run_submission.py --data-dir /path/to/licensed/data \
-  --model ensemble --out outputs/submission
-.venv/bin/python challenge/evaluation/validate_submission.py outputs/submission/remontada.csv
+  .venv/bin/python run_submission.py --data-dir data --model ensemble \
+  --cv-manifest outputs/qualified-cv-v2/manifest.json --out outputs/submission-v2
+.venv/bin/python challenge/evaluation/validate_submission.py outputs/submission-v2/remontada.csv
 ```
 
-The CSV, probability arrays, availability masks and receipt remain under ignored
-`outputs/`. The receipt pins code, model and input checksums, records runtime,
-and states the inactive-period rule. See `README.md` for the independent
-LightGBM, baseline, private CV and audit commands. The public repository contains
-code and frozen model parameters, not licensed match assets or predictions.
-
-Submission CSV SHA-256:
-`bea82d693e2ee603da66305523252056f53a8e20c8e28fc9f935e1ef18141b20`.
+The CSV, probabilities, availability/uncertainty masks and receipt remain under
+ignored `outputs/`. The receipt pins code, model and input checksums and records
+runtime. The command requires CV explicitly; `--backbone-only` selects the old
+fallback. The public repository contains code and model parameters, not licensed
+match data or predictions. See `README.md` for all asset and replay requirements.
 
 Public code: [barca-possession-submission](https://github.com/christopherlii/barca-possession-submission)
+
+Submitted CSV identity: SHA-256 `8f18e58701252edf3253ba8b977d83f16fc111b2a7f61faac3912a5a3c214f17`.
+The official format validator passed: 199,319 ordered rows, H=74,522,
+A=57,505, D=67,292. Full inference took 85.79s.

@@ -1,59 +1,69 @@
-# Submission evaluation and validation
+# CV-supported submission v2: evaluation and validation
 
-Primary model and decoder were fixed before the fresh synthetic audit. No supplied-match possession answers were read for submission inference, selection, or this evaluation.
+The numeric thresholds, frozen TCN/tree weights, feature schema and decoder were fixed before this cycle. Only unknown-height admission changed: confidence-qualified CV can fill missing tactical observations without nearby tracking anchors. No supplied-match answer key was used.
 
-## Fresh synthetic audit
+## External-data development test
 
-10 cases: two previously unused seeds (450101, 450102), five fixed scenarios, 12,000 frames each. Seeds were checked and consumed in the ledger; reserved final-audit seeds and real match J03WPY remain untouched. No tuning followed this audit. These results do not establish real-match accuracy.
+Sportec J03WN1 is reused development data, not an untouched test match. The test uses real player/ball tracking and provider labels, with simulated camera projection, 40% tracking gaps, localization noise and erroneous detections. There is no synchronized external CV video in this experiment. Known provider height creates projection errors but is withheld from the policy. Confidence/error relationships are simulated, not calibrated to our detector.
 
-| Frozen system | Spell F1 | Macro F1 | Frame accuracy |
-|---|---:|---:|---:|
-| ensemble | 0.984322 | 0.995149 | 0.996121 |
-| gbdt | 0.797352 | 0.940373 | 0.945065 |
-| baseline | 0.583393 | 0.555574 | 0.772010 |
-
-Runtime: 142.69 s. All 30 saved model/case scores were independently recomputed by the author and matched. Two seed clusters and short scenarios limit uncertainty estimates; this is not a cross-match confidence interval.
-
-## External development data
-
-The clean J03WN1 replay exactly reproduced the original ensemble: spell F1 0.793206, macro F1 0.952313, accuracy 0.965407. J03WN1 has been repeatedly inspected for development and is not an untouched evaluation match.
-
-Confidence/ground-uncertainty testing used real external tracking and provider height, with a fixed simulated camera, gaps and sensor errors. There is no synchronized external CV video in this test. Parameters were fixed before scores.
-
-The stress test hid 40% of observations in one-second gaps. It does not validate
-long-gap recovery or calibrate the actual detector. In the supplied clip, most
-otherwise eligible gap observations lack the required short endpoint support;
-only one is admitted by the unchanged conservative policy.
-
-| Observation condition | Tracking only | Naive CV fill | Confidence only | Full quality policy |
+| Condition | v1 spell F1 | v2 spell F1 | v2 macro F1 | v2 accuracy |
 |---|---:|---:|---:|---:|
-| clean | 0.793206 | 0.793206 | 0.793206 | 0.793206 |
-| accurate_recovery | 0.588800 | 0.753165 | 0.753165 | 0.753165 |
-| projection_known_height | 0.588800 | 0.412903 | 0.667102 | 0.654751 |
-| projection_unknown_height | 0.588800 | 0.412903 | 0.667102 | 0.663677 |
+| accurate_gap10 | 0.527273 | 0.761765 | 0.941970 | 0.956188 |
+| projection_gap10 | 0.527273 | 0.690471 | 0.928252 | 0.946708 |
+| projection_gap30 | 0.543345 | 0.695464 | 0.932227 | 0.949428 |
 
-Preset gate: passed. Runtime: 1060.11 s. All 48 saved scores, including four official baselines per selected observation input, were recomputed and matched.
+All preset checks passed. Runtime 597.92s. All 36 saved score rows, including four official baselines on each policy input, were recomputed by the author and matched. Detailed aggregates and the naive-fill comparison are in `experiments/uncertain-cv-v2-results.json`.
 
-Confidence filtering accounts for most of the gain in the projection-error test. The full airborne/ground-uncertainty policy is 0.01235 spell-F1 below confidence-only when height is known, and 0.00343 below it when height is unknown. This does **not** demonstrate an incremental F1 gain from airborne gating or a validated real-CV confidence estimator. No thresholds were loosened after seeing results.
+## Fresh synthetic held-out test
 
-## Supplied-match coverage and format only
+Ten cases: seeds 450201/450202, five fixed scenarios, 12,000 frames per case. Seeds were checked and consumed in the ledger. The same fixed policy was evaluated once, with no subsequent tuning. Reserved final-audit data remain untouched.
 
-- Full automatic tracking: 199,319 frames; 113,488 have a ball observation (56.94%).
-- Completed CV clip: frames 11185–18684, 6,276 observed and 1,224 missing (16.32%).
-- Conservative CV adapter: 6,615 baseline observations retained in the clip; one qualified CV gap fill; other unsupported points remain missing.
-- The primary CSV has 74,465 H, 57,596 A and 67,258 D labels, 572 transitions and 473 possession spells.
-- All 199,319 frame IDs are unique and ordered 0–199318. No blank cells, NaNs or unsupported label values. The official format validator passes.
-- Original frozen active-period predictions reproduced exactly; only the declared inactive-period X-to-D rule changes the submission encoding.
-- A fresh Python environment installed every pinned dependency and reproduced the primary CSV byte for byte.
-- Full primary inference: 102.06 s; clean-environment reproduction: 135.63 s. Runs shared CPU resources, so these are execution receipts rather than controlled speed benchmarks.
-- Packaged LightGBM reproduces its original predictions under the same inactive-period rule (50.11 s in the clean environment).
-- The verified five-minute GBDT run took 1.68 s inference / 14.05 s including provenance checks.
-- 55 focused original tests and three standalone repository tests passed. No independent coordinator review is claimed.
+| Policy | Spell F1 | Macro F1 | Frame accuracy |
+|---|---:|---:|---:|
+| incumbent | 0.906930 | 0.949185 | 0.952541 |
+| candidate | 0.975637 | 0.993392 | 0.993758 |
 
-Primary CSV SHA-256: `bea82d693e2ee603da66305523252056f53a8e20c8e28fc9f935e1ef18141b20`.
+| Scenario | Mean spell-F1 change |
+|---|---:|
+| confused_handover | +0.069734 |
+| default | +0.069734 |
+| hidden_dead_ball | +0.069670 |
+| interceptions | +0.087129 |
+| sparse_ball | +0.047266 |
 
-No supplied-match accuracy is reported. Prediction agreement, ball coverage and passing format validation are not accuracy measurements. Aggregate detail is in `experiments/submission-results.json`; all frame-level artifacts remain private.
+All preset held-out checks passed. Runtime 111.64s; all 20 saved score rows recomputed and matched. Two seed clusters and repeated scenario structure limit uncertainty estimates. These synthetic scores do not establish supplied-match accuracy or actual CV detection quality.
 
-## Completed optional CV-supported run
+## Why the old filter admitted one point
 
-The full-match CV variant admitted 1 additional point and changed 1 label compared with the backbone. It retains all 199,319 frames, with H/A/D counts {'H': 74464, 'A': 57597, 'D': 67258}. Runtime: 62.90s. Its SHA-256 is `c307a84f6352ec375ddacda54e7b9360421defaf730264bb08d1f6a9d14354a4`. This is prediction disagreement, not a measured accuracy gain or loss. The original CV and frozen model hashes remain unchanged.
+Of 302 CV observations in tactical-tracking gaps, 265 passed the unchanged confidence/localization checks. Of those 265, 261 had no short tracking bracket, three disagreed with the bracket, and one passed. All had unknown height. The v1 unknown-height anchor requirement therefore vetoed 264 otherwise eligible observations.
+
+V2 keeps the original tactical observations and admits all 265 confidence-qualified gap observations. It still rejects low/unknown confidence, excessive localization uncertainty, known airborne-risk flags, and upstream invalid/interpolated evidence. Height remains unknown in the saved sidecar. The frozen model is not newly trained to estimate height.
+
+## Supplied-match coverage only
+
+- The completed CV clip remains 7,500 frames with 6,276 observed CV positions.
+- Tactical ball observations in the clip: 6,615. V2 adds 265, yielding 6,880 observations and 620 missing frames (8.27%).
+- Full-match observed ball positions: 113,488 tactical plus 265 CV fills = 113,753. CV is only available in the existing five-minute interval.
+- No supplied-match F1 or accuracy is measured. Coverage and changes in predicted labels are not accuracy gains.
+- 57 focused original tests and six standalone attachment tests passed. No independent coordinator review is claimed.
+
+## Reproduction limitation
+
+The generated CSV can be reproduced from the frozen model, licensed tracking and the exact private CV adapter artifacts. Exact regeneration of the upstream CV cache from raw video has not been established. Consequently, bundle-only reproduction required by the competition remains an unresolved limitation; the cache must not be posted publicly. The previous tracking-only submission is preserved at tag `submission-v1` and in the original private upload folder. Historical results are in `experiments/submission-v1-evaluation.md`.
+
+## Generated full-match output
+
+The official validator accepted all 199,319 ordered unique frames, 0–199318,
+with H=74,522, A=57,505, D=67,292.
+There are 574 label transitions and 474 H/A possession spells.
+Inference took 85.79s. Probabilities are finite, normalized N×3
+with recorded H/A/D order and aligned IDs. Availability and uncertainty masks
+match the 265 CV fills. Original CV and frozen model hashes are unchanged.
+
+Compared with the earlier tracking-only submission, 241 labels change.
+This is prediction disagreement, not evidence of an accuracy gain or loss.
+The five-minute integrated output is a slice of full-match TCN/tree inference,
+so it retains full-match temporal context. The earlier five-minute GBDT output
+is preserved separately and unchanged.
+
+CSV SHA-256: `8f18e58701252edf3253ba8b977d83f16fc111b2a7f61faac3912a5a3c214f17`.

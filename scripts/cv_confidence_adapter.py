@@ -2,7 +2,8 @@
 
 Emits a compatible possession manifest and a separate quality NPZ. Detector
 scores and verification priors are explicitly uncalibrated. Unknown airborne
-state remains NaN and requires short baseline-anchor support for a CV fill.
+state remains NaN. The selected policy either requires short baseline-anchor
+support or admits confidence-qualified uncertain projections without that veto.
 """
 import argparse
 from dataclasses import asdict
@@ -55,7 +56,7 @@ def quality_from_rows(rows,observed,homography,pitch):
     return confidence,sigma,airborne,kind
 
 
-def run(manifest_path,features_path,cache,out):
+def run(manifest_path,features_path,cache,out,unknown_airborne_policy='require_anchors'):
     manifest_path=Path(manifest_path);features_path=Path(features_path);cache=Path(cache)
     out=private_path(out)
     if out.exists():raise ValueError('Use a new private output directory')
@@ -76,7 +77,8 @@ def run(manifest_path,features_path,cache,out):
     if not np.array_equal(reconstructed,original['ball'],equal_nan=True) or not np.array_equal(sources,original['ball_source']):
         raise ValueError('Accepted CV observations do not reproduce')
     confidence,sigma,airborne,kind=quality_from_rows(rows,original['ball_observed'],paths['homography'],np.asarray(m['pitch']))
-    selected,quality=select_observations(baseline,original['ball'],confidence,sigma,airborne,m['blocks'])
+    policy=QualityConfig(unknown_airborne_policy=unknown_airborne_policy)
+    selected,quality=select_observations(baseline,original['ball'],confidence,sigma,airborne,m['blocks'],policy)
     out.mkdir(parents=True)
     np.savez_compressed(out/'quality.npz',frame_ids=original['frame_ids'],cv_ball=original['ball'],baseline_ball=baseline,
         cv_source=original['ball_source'],confidence=confidence,confidence_kind=kind,
@@ -86,7 +88,7 @@ def run(manifest_path,features_path,cache,out):
     tags=manifest_path.parent/m['files']['tagging'];(out/'restarts.json').write_bytes(tags.read_bytes())
     m.update(files=dict(observations='observations.npz',tagging='restarts.json'),
         ball_source='baseline observations plus confidence/ground-qualified CV fills',
-        quality_sidecar='quality.npz',quality_policy=asdict(QualityConfig()),
+        quality_sidecar='quality.npz',quality_policy=asdict(policy),
         quality_adapter_sha256=digest(__file__),quality_policy_sha256=digest(ROOT/'scripts/possession_observation_quality.py'),
         parent_manifest_sha256=digest(manifest_path))
     m['quality_outputs_sha256']={name:digest(out/name) for name in ('observations.npz','quality.npz','restarts.json')}
@@ -94,6 +96,8 @@ def run(manifest_path,features_path,cache,out):
     summary=dict(decisions=dict(Counter(quality['decision'].tolist())),
         uncalibrated_scores=True,unknown_airborne_frames=int(np.isnan(airborne).sum()),
         height_estimated=False,training_performed=False,input_sha256=pins,default_changed=False)
+    summary.update(quality_policy=asdict(policy),
+        uncertain_projection_fills=int((quality['cv_used']&quality['ground_projection_uncertain']).sum()))
     if any(digest(p)!=h for p,h in pins.items()):raise ValueError('Input changed during conversion')
     (out/'summary.json').write_text(json.dumps(summary,indent=2)+'\n')
     return summary
@@ -102,4 +106,5 @@ def run(manifest_path,features_path,cache,out):
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__)
     for name in ('manifest','features','cache','out'):p.add_argument('--'+name,required=True)
-    a=p.parse_args();print(json.dumps(run(a.manifest,a.features,a.cache,a.out),indent=2))
+    p.add_argument('--unknown-airborne-policy',choices=['require_anchors','allow_uncertain'],default='require_anchors')
+    a=p.parse_args();print(json.dumps(run(a.manifest,a.features,a.cache,a.out,a.unknown_airborne_policy),indent=2))

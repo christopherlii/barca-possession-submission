@@ -1,112 +1,104 @@
-# Remontada — frame-by-frame possession
+# Remontada — CV-supported possession submission v2
 
-Reproducible offline H/A/D possession inference for More Than A Hack. The default
-uses full-match automatic tactical tracking and the frozen player TCN/tree
-ensemble. Licensed match assets and prediction files are deliberately excluded.
+Full-match H/A/D inference using the frozen player TCN/tree ensemble, automatic
+tactical tracking as the backbone, and confidence-qualified CV gap recovery.
+No model retraining, supplied-match answer key, cloud GPU or full-video CV rerun
+is required for Part 2 inference.
 
-## Regenerate the submission
+## Required private inputs
 
-Use Python 3.12 and the original licensed tactical data bundle. No video decoding,
-GPU service, training, network download, or answer key is needed for inference.
+The CV-supported submission requires the original licensed tactical bundle **and
+our completed private CV artifacts**. A fresh clone does not contain those
+artifacts. Exact reproduction from the raw video alone is not established because
+upstream SAM recovery is nondeterministic. Do not publish the cache or predictions
+to GitHub. The tracking-only fallback remains available explicitly.
+
+Place the licensed bundle under `data/tactical/`, including the original ATD text,
+metadata, homography and automatic Smart Tagging. Provide these existing files:
+
+- `exhaustive-part2-input-v1/manifest.json` and its observation/tagging sidecars
+- `cv-fresh-updated-20261117-v2/02-fused.npz`
+- `cv-fresh-updated-20261117-v2/12-final/detections.jsonl` and `config.json`
+
+## Regenerate the CV-supported submission
+
+Use Python 3.12. The frozen model files are included under `models/`.
 
 ```sh
 python3.12 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
-OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 VECLIB_MAXIMUM_THREADS=2 \
-  .venv/bin/python run_submission.py --data-dir /path/to/licensed/data \
-  --model ensemble --out outputs/submission
-.venv/bin/python challenge/evaluation/validate_submission.py outputs/submission/remontada.csv
-```
-
-`/path/to/licensed/data/tactical/` must contain the original
-`BAR-ATH_tactical_atd.txt` and `BAR-ATH_tactical_atd.xml`. The LightGBM alternative
-also uses `BAR-ATH_tactical_smart_tagging.xml`. All model parameters are included
-under `models/`; their checksums are verified before prediction. On macOS,
-LightGBM may additionally require the system OpenMP runtime (`brew install libomp`).
-
-The output has exactly 199,319 ordered rows, frames 0–199318, with only H/A/D.
-Inactive frames outside the supplied half bounds receive D. Missing tracking or
-uncovered CV **inside** a half is not itself a dead-ball decision. The receipt
-records input/model/source hashes, runtime and coverage. Probabilities and
-availability masks are saved separately under the same ignored output directory.
-
-Run the fixed LightGBM and reference baseline with separate new destinations:
-
-```sh
-.venv/bin/python run_submission.py --data-dir /path/to/licensed/data --model gbdt --out outputs/gbdt
-.venv/bin/python run_submission.py --data-dir /path/to/licensed/data --model baseline --out outputs/baseline
-```
-
-The packaged baseline uses the official ±50-frame nearest-player majority vote,
-plus the same explicit inactive-period rule used by this entry point.
-To reproduce the unmodified official baseline as well:
-
-```sh
-MTAH_DATA_DIR=/path/to/licensed/data .venv/bin/python challenge/starter/baseline.py \
-  --window 50 --out outputs/official-baseline
-```
-
-## Optional private CV input
-
-The default submission is self-contained given the licensed tracking bundle.
-The experimental CV-enhanced variant additionally requires the existing private
-exhaustive CV cache and prepared adapter artifacts; these are **not** in a fresh
-clone. This repository does not claim that the nondeterministic upstream SAM
-recovery can regenerate the identical private cache from scratch.
-
-To prepare confidence-qualified observations, place the original tactical bundle
-under `data/` and provide the verified private files:
-
-```sh
 .venv/bin/python scripts/cv_confidence_adapter.py \
   --manifest /private/exhaustive-part2-input-v1/manifest.json \
   --features /private/cv-fresh-updated-20261117-v2/02-fused.npz \
   --cache /private/cv-fresh-updated-20261117-v2/12-final \
-  --out outputs/qualified-cv
-.venv/bin/python run_submission.py --data-dir data --model ensemble \
-  --cv-manifest outputs/qualified-cv/manifest.json --out outputs/with-cv
+  --unknown-airborne-policy allow_uncertain \
+  --out outputs/qualified-cv-v2
+OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 VECLIB_MAXIMUM_THREADS=2 \
+  .venv/bin/python run_submission.py --data-dir data --model ensemble \
+  --cv-manifest outputs/qualified-cv-v2/manifest.json --out outputs/submission-v2
+.venv/bin/python challenge/evaluation/validate_submission.py outputs/submission-v2/remontada.csv
 ```
 
-This keeps every available tactical ball observation and admits only qualified
-CV observations into gaps. It preserves original image evidence, source,
-visibility, confidence, localization uncertainty and unknown airborne state.
-Interpolation/display estimates are never treated as measurements. CV is
-available only over its recorded 7,500-frame interval; the rest of the match
-continues on automatic tactical tracking. See [the technical document](remontada.md).
+If the qualified private adapter bundle is already provided, replay directly
+with `--cv-manifest /private/qualified-cv-v2/manifest.json`; keep its observation,
+quality and restart sidecars together. No upstream CV rerun is needed for this
+cache-based replay. The raw-video-only reproducibility limitation still applies.
 
-For the original five-minute LightGBM adapter output:
+Use new output directories; existing artifacts are never overwritten. On macOS,
+LightGBM may need the system OpenMP runtime (`brew install libomp`). The output
+has 199,319 ordered rows, frames 0–199318, using H/A/D only. Receipt hashes,
+probabilities and observation/uncertainty masks are saved alongside the CSV.
+
+## What changed in v2
+
+The old policy required short tracking anchors whenever ball height was unknown.
+That defeated recovery in long tracking gaps. V2 keeps unknown height explicitly
+unknown, but allows an accepted CV observation to fill a gap if its confidence
+and localization uncertainty pass the unchanged checks. Known airborne warnings,
+low/missing confidence, invalid projection and upstream rejections still block a
+fill. Display interpolation is never an observation. Existing tactical positions
+remain unchanged; uncovered CV frames continue to use tactical tracking.
+
+The submission command refuses to silently fall back to tracking-only and checks
+the exact v2 policy configuration. See [the technical document](remontada.md) and
+[measured evaluation results](EVALUATION_REPORT.md). Real CV confidence is still
+uncalibrated; external stress tests do not establish supplied-match accuracy.
+
+## Preserved alternatives
 
 ```sh
+# Explicit tracking-only fallback; reproduces the v1 primary labels.
+.venv/bin/python run_submission.py --data-dir data --model ensemble \
+  --backbone-only --out outputs/backbone
+# Frozen LightGBM alternative using automatic tactical tagging.
+.venv/bin/python run_submission.py --data-dir data --model gbdt --out outputs/gbdt
+# Unmodified official nearest-player baseline, no scoring.
+MTAH_DATA_DIR=data .venv/bin/python challenge/starter/baseline.py \
+  --window 50 --out outputs/official-baseline
+# Original five-minute LightGBM prediction from the existing CV adapter.
 .venv/bin/python scripts/possession_gbdt.py predict \
   --manifest /private/exhaustive-part2-input-v1/manifest.json \
   --model models/gbdt --out outputs/clip-gbdt
 ```
 
-## Checks and evaluation
+The original v1 repository is preserved at tag `submission-v1`. The old upload
+file is not overwritten by this version.
+
+## Validation and evaluation
 
 ```sh
 .venv/bin/python -m unittest discover -s tests -v
 ```
 
-The included synthetic audit entry point checks a seed ledger before generating
-data and consumes fresh held-out seeds after a successful run. It never changes
-model parameters. Recorded audit seeds cannot be rerun as untouched evaluation;
-choose genuinely fresh seeds for a new audit. Preserve reserved final-audit data.
+`evaluate_cv_policy.py` compares the locked v1/v2 policies on fresh synthetic
+matches after a passing external-development result. It checks and consumes the
+seed ledger. Do not reuse recorded held-out seeds as fresh tests or retune on
+those results. Reserved final-audit data remain untouched. See the committed
+experiment plans and aggregate reports; all frame-level artifacts stay private.
 
-```sh
-.venv/bin/python evaluate_synthetic.py --ledger experiments/seed_ledger.json \
-  --seeds FRESH_SEED_1 FRESH_SEED_2 --out outputs/new-synthetic-audit
-```
+## Form fields
 
-See `EVALUATION_REPORT.md` for measured scores and their scope. Public supplied-
-match answers were not used for this submission's training, tuning or selection.
-The official format validator reads the prediction CSV alone.
-
-## Form deliverables
-
-- Upload the locally generated `remontada.csv`.
-- Enter this public repository URL.
-- Upload [remontada.md](remontada.md) as the short technical document.
-
-Do not upload licensed data or frame-level predictions to GitHub. The original
-challenge code retains its notice in [challenge/LICENSE](challenge/LICENSE).
+Upload the newly generated `remontada.csv` and [remontada.md](remontada.md), and
+enter this public repository URL. The public repository contains code, model
+parameters and aggregate diagnostics—not licensed match data or predictions.
+Upstream challenge code retains its notice in [challenge/LICENSE](challenge/LICENSE).
