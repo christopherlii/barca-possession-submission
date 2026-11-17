@@ -1,9 +1,4 @@
-"""Feature-space team-swap/180-degree-rotation involution for observed inputs.
-
-Symmetric probability averaging removes arbitrary H/A bias without fitting or
-consulting targets. Scalar distances/speeds stay fixed; team pools swap and
-direction vectors reverse. Supports the explicitly versioned 40/56/96 layouts.
-"""
+"""Frozen submission inference: controller symmetry."""
 import numpy as np
 
 
@@ -31,3 +26,4 @@ def average_predictions(original,transformed):
     if (a<0).any() or (b<0).any() or not np.allclose(a.sum(1),1.) or not np.allclose(b.sum(1),1.):
         raise ValueError('invalid H/A/D probabilities')
     return .5*(a+b[:,[1,0,2]])
+

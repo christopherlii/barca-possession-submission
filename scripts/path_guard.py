@@ -1,27 +1,11 @@
-"""Refuse supplied-match paths in synthetic tooling.
-
-The synthetic generator and the experiment harness must never read or write the supplied match:
-not its public ground truth, not the gated data bundle, not the video proxies. Every input and
-output path they take goes through check_paths() first. A path is refused when, after resolving
-symlinks and '..', it lies inside
-
-  - challenge/evaluation/gt/   the public ground truth (never a tuning set)
-  - data/                      the gated match bundle (and MTAH_DATA_DIR, if set)
-  - media/                     match video proxies
-
-or when any component of it is named with the supplied match's "BAR-ATH" stem.
-
-    python scripts/path_guard.py PATH [PATH ...]    # exits 2 naming the first refused path
-"""
-
+"""Frozen submission inference: path guard."""
 import os
-import sys
+
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(ROOT, "challenge"))
-from games import DATA_DIR, GAME  # noqa: E402
 
-EXIT_FORBIDDEN = 2
+
+from games import DATA_DIR, GAME
 
 
 class ForbiddenPathError(ValueError):
@@ -67,18 +51,3 @@ def check_paths(paths):
         if reason:
             raise ForbiddenPathError(reason)
 
-
-def guard_paths(paths):
-    """check_paths() for command-line tools: print the reason and exit non-zero."""
-    try:
-        check_paths(paths)
-    except ForbiddenPathError as error:
-        print("refused: {}".format(error), file=sys.stderr)
-        sys.exit(EXIT_FORBIDDEN)
-
-
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("usage: path_guard.py PATH [PATH ...]", file=sys.stderr)
-        sys.exit(1)
-    guard_paths(sys.argv[1:])

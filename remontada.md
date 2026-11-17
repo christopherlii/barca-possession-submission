@@ -1,73 +1,29 @@
-# Remontada: CV-supported possession inference
+# Remontada: tactical-tracking possession inference
 
-## Approach and submitted system
+## Submitted approach
 
-The submission predicts home possession (H), away possession (A), or dead ball
-(D) for every tactical-video frame. We use the existing automatic tactical
-tracking as the full-match backbone. A frozen temporal convolutional network
-(TCN) and histogram gradient-boosted tree classifier each produce H/A/D evidence.
-Their probabilities are averaged equally after home/away symmetry averaging.
-A frozen sequence decoder uses learned switch evidence, team scale 1 and dead
-transition cost 16. No training occurs during submission generation.
+We predict home possession (H), away possession (A), or dead ball (D) for every
+tactical-video frame using the provided automatic tactical tracking. A frozen
+player temporal convolutional network (TCN) and histogram gradient-boosted tree
+produce H/A/D probabilities. We average their probabilities equally after
+home/away symmetry averaging. A frozen sequence decoder uses learned switch
+evidence, team scale 1 and dead transition cost 16. No fitting occurs in inference.
 
-The TCN has 24,292 parameters and uses 56 global features plus 20 features per
-player track. Its receptive radius is 541 frames at 25 fps. The tree receives
-440 contextualized tracking/motion features and has 250 boosting iterations.
-The implementation preserves the original float64 base-coordinate, float32
-motion-feature and float16 player-feature conventions. Missing coordinates remain
-missing observations; numerical feature defaults are paired with availability
-features rather than invented ball measurements.
+The TCN has 24,292 parameters, 56 global features and 20 features per player
+track. Its receptive radius is 541 frames at 25 fps. The tree receives 440
+contextualized tracking/motion features and has 250 boosting iterations. The
+NumPy forward pass preserves float64 base coordinates, float32 motion features
+and float16 player features. Missing coordinates retain availability features;
+they are not treated as measured zero positions.
 
-The updated full-match submission uses the tactical tracking backbone plus
-confidence-qualified CV observations in its missing-ball gaps. The model and
-decoder are the same frozen ensemble. The earlier tracking-only submission is
-preserved as a fallback. The verified replay route uses the original licensed tracking bundle and the
-existing private CV cache. A complete upstream source snapshot and raw-video
-rebuild command are now included; their end-to-end byte equality remains unverified.
+## Inputs and alignment
 
-## Assets and alignment
-
-The input is the automatic tactical ATD text plus its metadata. Metadata maps
-track slots to home/away; a slot is not assumed to be a permanent player identity.
-Pitch coordinates are converted to metres on the 105.3 × 68 m pitch. ATD frame
-IDs are one-based and are converted once to zero-based video IDs. The output is
-exactly 199,319 rows, frames 0–199318, at 25 fps. Temporal processing resets at
-the supplied half boundaries. Frames outside those supplied active-period
-bounds receive D; this rule does not depend on whether CV sees a ball.
-
-The primary model does not use broadcast video, audio, human match event feeds,
-public possession answers, or Smart Tagging. Broadcast is not synchronized to
-tactical video and is excluded. The frozen LightGBM alternative uses automatic
-tactical Smart Tagging as soft restart evidence, not as possession ground truth.
-It has 41 features, 120 trees, 15 leaves and its original transition cost 8.
-
-The completed exhaustive CV experiment covers frames 11185–18684 only. Its
-adapter has 6,276 observed ball frames and 1,224 missing frames. It accepts direct
-detections and provenance-verified SAM recovery, rejects explicit motion/penalty
-failures, and excludes interpolated or display-estimated positions. These are
-coverage measurements, not detection-accuracy estimates.
-
-## Confidence and airborne uncertainty handling
-
-The adapter preserves image visibility while deciding whether a projected point
-can enter the existing possession features. Available tactical observations are
-retained. A CV fill requires confidence at least .25 and localization uncertainty
-at most 2 m. Known airborne risk above .25 blocks a fill. Unknown height remains
-unknown, with an explicit uncertainty mask, but no longer requires nearby tracking
-anchors. That anchor requirement prevented almost all recovery in long gaps.
-The unchanged upstream detector/mask provenance and motion/penalty rejection
-checks still apply. No display interpolation enters the model as an observation.
-
-Detector scores and a .5 verified-mask fallback are explicitly uncalibrated. A
-2-pixel localization scale is propagated through the inverse homography; it does
-not measure height. Unknown-height points can still have projection error. V2
-accepts that remaining uncertainty rather than treating unavailable height as
-proof that an observation is invalid. This is an input selection policy, not a
-newly trained height-aware model or a calibrated airborne detector.
-
-The old policy remains available as `require_anchors`. V2 explicitly selects
-`allow_uncertain`, tested with frozen thresholds/model parameters on external
-tracking stress cases and fresh synthetic matches before supplied-match inference.
+Inference requires only the provided tactical ATD text and metadata XML.
+Metadata maps track slots to teams; slots are not assumed to represent permanent
+player identities. Coordinates use the 105.3 × 68 m pitch. One-based tracking
+IDs are converted once to zero-based video IDs. The output covers all 199,319
+frames at 25 fps. Temporal processing resets at the supplied half boundaries.
+Frames outside those boundaries receive D and are ungraded.
 
 ## Training data and supervision
 
@@ -95,88 +51,47 @@ labels, corrected tracking, or event annotations enter training or model choice.
 
 ## Possession rules and limitations
 
-The sequence model learns possession continuity through loose balls, passes and
-occlusions from external/synthetic targets. It does not give possession to every
-player a flight path passes near. The decoder discourages implausible state
-flicker while permitting team changes from its learned switch evidence. Dead
-ball is inferred from multiple motion/availability/context features; an uncovered
-CV frame is not directly assigned D. The alternative LightGBM adds automatic
-restart features but does not copy phase tags into possession labels.
+The sequence model learns continuity through loose balls, passes and occlusions
+from external and synthetic targets. It does not assign possession to every
+player a pass travels near. The decoder discourages flicker while permitting
+team changes through learned switch evidence. Dead-ball evidence comes from
+motion, availability and context features; a missing ball is not automatically D.
 
-This is offline inference with future context, not live causal prediction.
-Tracking identity errors, long ball gaps, airborne projections, ambiguous
-challenges and differences between provider and challenge labels remain risks.
-Exact regeneration of the existing CV cache from a fresh video run is not
-established; this is an unverified rebuild, not proof of inherent nondeterminism. The verified replay uses the private cache; the supplied raw-video rebuild route
-has not completed a fresh equality check. The tracking-only fallback does not
-need the cache.
+Inference is offline and uses future context. Tracking errors, long observation
+gaps, ambiguous challenges and differences between provider labels and the
+challenge definition remain limitations. This is a frozen inference package;
+training provenance and data sources are documented above and in the model receipt.
 
-## Evaluation and reproduction
+## Evaluation
 
-Measured results and limitations are in `EVALUATION_REPORT.md`. The controlled
-external J03WN1 development tests improved spell F1 from .527273 to .690471
-with noisy 10-second recovery and .543345 to .695464 with noisy 30-second
-recovery. These use simulated observations on real tracking, not external video.
-The fixed policy then passed ten fresh synthetic held-out cases: spell F1
-.906930 → .975637, macro F1 .949185 → .993392, accuracy .952541 → .993758.
-Synthetic results do not establish real-match accuracy. No thresholds or models
-were tuned after this evaluation or against supplied-match labels.
+On ten locked synthetic audit cases, spell F1 was 0.984322, macro F1 0.995149
+and frame accuracy 0.996121. Synthetic scores do not establish real-match accuracy.
+The repeatedly inspected external development match J03WN1 yielded spell F1
+0.793206, macro F1 0.952313 and accuracy 0.965407; it is not an untouched test.
+No full-match supplied-game accuracy is claimed.
 
-The final adapter adds 265 CV observations to 6,615 tactical observations in the
-five-minute interval. There are 6,880 usable observations and 620 missing frames.
-All 265 fills retain an unknown-height flag. No supplied-match accuracy is claimed.
-Exact CSV replay from the private cache is checked separately from upstream CV
-regeneration: raw-video-only reproduction remains unverified, an unresolved
-limitation against the competition's bundle-only reproduction requirement.
+## Reproduction
 
-Install the pinned dependencies with Python 3.12. Place the licensed tactical
-bundle under `data/`, then run:
+Use Python 3.12 and the public repository's default branch. The frozen model
+files are included. From the repository root:
 
 ```sh
-.venv/bin/python scripts/cv_confidence_adapter.py \
-  --manifest /private/exhaustive-part2-input-v1/manifest.json \
-  --features /private/cv-fresh-updated-20261117-v2/02-fused.npz \
-  --cache /private/cv-fresh-updated-20261117-v2/12-final \
-  --data-dir data --unknown-airborne-policy allow_uncertain --out outputs/qualified-cv-v2
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
 OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 VECLIB_MAXIMUM_THREADS=2 \
-  .venv/bin/python run_submission.py --data-dir data --model ensemble \
-  --cv-manifest outputs/qualified-cv-v2/manifest.json --out outputs/submission-v2
-.venv/bin/python challenge/evaluation/validate_submission.py outputs/submission-v2/remontada.csv
+  .venv/bin/python run_submission.py --data-dir /path/to/licensed/data \
+  --out outputs/submission
+.venv/bin/python challenge/evaluation/validate_submission.py outputs/submission/remontada.csv
 ```
 
-The CSV, probabilities, availability/uncertainty masks and receipt remain under
-ignored `outputs/`. The receipt pins code, model and input checksums and records
-runtime. The command requires CV explicitly; `--backbone-only` selects the old
-fallback. The public repository contains code and model parameters, not licensed
-match data or predictions. See `README.md` for all asset and replay requirements.
+Use a new output directory. The data directory contains `tactical/` with
+`BAR-ATH_tactical_atd.txt` and `BAR-ATH_tactical_atd.xml`. The CSV, probabilities,
+availability masks and hash receipt stay in ignored `outputs/`. The repository
+contains source and frozen model parameters; licensed data and predictions are
+not published. See `SOURCE_MANIFEST.json` and `SUBMISSION_CHECKS.json` for checks.
+
+The submitted CSV has 199,319 ordered frames and labels H=74,465, A=57,596,
+D=67,258. Its SHA-256 is
+`bea82d693e2ee603da66305523252056f53a8e20c8e28fc9f935e1ef18141b20`.
 
 Public code: [barca-possession-submission](https://github.com/christopherlii/barca-possession-submission)
-
-Submitted CSV identity: SHA-256 `8f18e58701252edf3253ba8b977d83f16fc111b2a7f61faac3912a5a3c214f17`.
-The official format validator passed: 199,319 ordered rows, H=74,522,
-A=57,505, D=67,292. Full inference took 85.79s.
-
-A clean-checkout replay using the portable private CV bundle reproduced this
-CSV byte for byte, with identical probability and availability arrays. This
-verifies cache-based replay, not raw-video-only regeneration.
-
-
-The upstream CV source snapshot, public YOLO/SAM checkpoint downloads and pinned
-extra dependencies are provided in [CV_REBUILD.md](https://github.com/christopherlii/barca-possession-submission/blob/codex/submission/CV_REBUILD.md).
-After its setup, the complete raw-video command is:
-
-```sh
-OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 VECLIB_MAXIMUM_THREADS=2 \
-  .venv/bin/python rebuild_v2_cv.py --rebuild --data-dir data \
-  --device mps --out outputs/v2-from-video
-```
-
-It runs the 23 recorded CV stages and both adapters, then verifies the frozen
-submission hash. This repairs the missing upstream-code packaging; a full
-raw-video byte-equality run remains unverified.
-
-
-A second verification regenerated both adapters directly from the original CV
-cache and reproduced the same CSV in 107.88 seconds, including 87.02 seconds
-for possession inference. It retained all 265 CV fills and passed the official
-format, probability and frame-alignment checks. Original CV hashes were unchanged.

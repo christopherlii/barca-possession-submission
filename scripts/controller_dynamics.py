@@ -1,37 +1,8 @@
-"""Label-free motion evidence for a controller near a noisy tracked ball.
-
-Team-pooled distances penalize implausibly jumpy player tracks. They supplement,
-never overwrite, observed positions. No knowledge of synthetic player identities,
-carrier IDs, formation slots, labels, or latent causes is used.
-"""
+"""Frozen submission inference: controller dynamics."""
 import numpy as np
 
-from direct_weight_model import _blocks, _point
-from path_guard import check_paths
 
-
-def tracking_arrays(raw_path, teams, n_frames, pitch):
-    check_paths([raw_path])
-    if not teams or any(t not in ('H','A') for t in teams) or n_frames < 1:
-        raise ValueError('invalid tracking dimensions or teams')
-    players = np.full((n_frames,len(teams),2), np.nan, dtype=np.float32)
-    ball = np.full((n_frames,2), np.nan, dtype=np.float32)
-    seen = set()
-    with open(raw_path) as handle:
-        for line in handle:
-            if not line.strip():
-                continue
-            parts = line.strip().split(':')
-            if len(parts) != 3:
-                raise ValueError('invalid tracking row')
-            frame = int(parts[0])-1
-            groups = parts[1].split(';')
-            if frame in seen or not 0 <= frame < n_frames or len(groups) != len(teams):
-                raise ValueError('invalid frame or slot count')
-            seen.add(frame)
-            players[frame] = [_point(g,pitch) for g in groups]
-            ball[frame] = _point(parts[2],pitch)
-    return players,ball
+from direct_weight_model import _blocks
 
 
 def motion_features(players, ball, teams, blocks, fps=25.):
@@ -85,7 +56,3 @@ def motion_features(players, ball, teams, blocks, fps=25.):
                 output[first:last+1,col+2] = np.minimum(selected/15.,1.)
     return output
 
-
-def dynamics_from_tracking(raw_path, teams, n_frames, pitch, blocks, fps=25):
-    players,ball=tracking_arrays(raw_path,teams,n_frames,pitch)
-    return motion_features(players,ball,teams,blocks,fps)

@@ -1,20 +1,35 @@
-"""Stable-player temporal encoding, invariant team pooling, global possession TCN."""
+"""Frozen submission inference: player possession tcn."""
 import json
+
+
 from pathlib import Path
+
 
 import numpy as np
 
+
 from direct_weight_model import _blocks
+
+
 from path_guard import check_paths
+
+
 from player_track_features import ACTOR_RADIUS
-from possession_tcn import (shapes as global_shapes,torch_model as global_model,
-                            numpy_logits,RADIUS as GLOBAL_RADIUS)
+
+
+from possession_tcn import shapes as global_shapes, numpy_logits, RADIUS as GLOBAL_RADIUS
+
+
 from possession_boundary import POSITIVE_WEIGHT
 
+
 WIDTH=16
+
+
 DILATIONS=(1,5,25)
+
+
 RADIUS=GLOBAL_RADIUS+ACTOR_RADIUS
-assert sum(DILATIONS)==ACTOR_RADIUS
 
 
 def shapes():
@@ -28,50 +43,6 @@ def shapes():
     return result
 
 
-def torch_model():
-    import torch
-    from torch import nn
-
-    class Separable(nn.Module):
-        def __init__(self,d):
-            super().__init__();self.dw=nn.Conv1d(WIDTH,WIDTH,3,padding=d,dilation=d,groups=WIDTH)
-            self.pw=nn.Conv1d(WIDTH,WIDTH,1)
-
-        def forward(self,x):return torch.relu(self.pw(self.dw(x)))
-
-    class Actor(nn.Module):
-        def __init__(self):
-            super().__init__();self.proj=nn.Conv1d(20,WIDTH,1)
-            self.layers=nn.ModuleList([Separable(d) for d in DILATIONS])
-
-        def forward(self,x):
-            x=torch.relu(self.proj(x))
-            for layer in self.layers:x=x+.25*layer(x)
-            return x
-
-    class Model(nn.Module):
-        def __init__(self):
-            super().__init__();self.actor=Actor();self.controller=global_model(120)
-            self.boundary=nn.Conv1d(32,1,1)
-            nn.init.zeros_(self.boundary.weight);nn.init.constant_(self.boundary.bias,-2.)
-
-        def forward(self,global_features,actors,presence,teams):
-            batch,slots,_,frames=actors.shape
-            encoded=self.actor(actors.reshape(batch*slots,20,frames)).reshape(batch,slots,WIDTH,frames)
-            pooled=[]
-            for team in (0,1):
-                valid=presence&(teams[:,:,None]==team)
-                count=valid.sum(1)[:,None,:]
-                mean=(encoded*valid[:,:,None,:]).sum(1)/count.clamp_min(1)
-                maximum=encoded.masked_fill(~valid[:,:,None,:],-1e9).amax(1)
-                maximum=torch.where(count>0,maximum,torch.zeros_like(maximum))
-                pooled.extend([mean,maximum])
-            hidden=self.controller.encode(torch.cat([global_features]+pooled,dim=1))
-            return self.controller.head(hidden),self.boundary(hidden)[:,0]
-
-    return Model()
-
-
 def validate(weights):
     expected=shapes()
     if set(weights)!=set(expected):raise ValueError('player model tensor names differ')
@@ -81,14 +52,6 @@ def validate(weights):
         if a.shape!=shape or not np.isfinite(a).all():raise ValueError('invalid player tensor '+key)
         result[key]=a
     return result
-
-
-def save_weights(path,model):
-    check_paths([path]);w=validate({k:v.detach().cpu().numpy() for k,v in model.state_dict().items()})
-    data=dict(schema=1,kind='stable-player-tcn-v1',actor_layout='player20-float16-v1',
-        global_columns=56,parameter_count=sum(a.size for a in w.values()),receptive_radius=RADIUS,
-        positive_weight=POSITIVE_WEIGHT,tensors={k:v.tolist() for k,v in w.items()})
-    Path(path).write_text(json.dumps(data)+'\n')
 
 
 def load_weights(path):
@@ -147,3 +110,4 @@ def probabilities(global_features,actors,presence,teams,weights,blocks,chunk=204
             p[start:end]=state/state.sum(1,keepdims=True)
             q[start:end]=np.exp(-np.logaddexp(0.,-(logits[:,3]-np.log(POSITIVE_WEIGHT))))
     return p,q
+

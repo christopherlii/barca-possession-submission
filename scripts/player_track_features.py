@@ -1,13 +1,13 @@
-"""Observed-only stable-player trajectories; no team/carrier/target label input.
-
-20 columns per track, quantized identically to float16 in fitting and inference.
-Presence masks use observations in the actor encoder's 31-frame radius only.
-"""
+"""Frozen submission inference: player track features."""
 import numpy as np
+
 
 from direct_weight_model import _blocks
 
+
 ACTOR_RADIUS=31
+
+
 VECTOR_COLUMNS=(4,5,6,7,8,9,10,11)
 
 
@@ -61,3 +61,4 @@ def swap_player_features(features):
     if x.ndim!=3 or x.shape[2]!=20 or not np.isfinite(x).all():raise ValueError('invalid player feature layout')
     result=x.copy();result[:,:,VECTOR_COLUMNS]*=-1
     return result
+

@@ -1,12 +1,9 @@
-"""Observed ball direction changes around potential touches; no label inputs.
-
-Eight offline features over 200 ms on each side: endpoint validity, backward and
-forward velocity components, velocity change and turning angle. Missing endpoints
-remain unavailable; trajectories are not filled or invented. Half boundaries reset.
-"""
+"""Frozen submission inference: ball control features."""
 import numpy as np
 
+
 from direct_weight_model import _blocks
+
 
 NAMES=('backward_velocity_known','forward_velocity_known','backward_vx','backward_vy',
        'forward_vx','forward_vy','velocity_change','turning_angle')
@@ -42,3 +39,4 @@ def ball_control_features(ball,blocks,fps=25.,span_seconds=.2):
         out[:,7]=np.where(turning,(1-np.clip(cosine,-1,1))/2,0.)
     if not np.isfinite(output).all():raise ValueError('non-finite ball-control features')
     return output
+
