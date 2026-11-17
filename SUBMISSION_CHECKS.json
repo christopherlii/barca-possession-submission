@@ -28,7 +28,11 @@
     "original_inputs_unchanged": true,
     "frozen_models_unchanged": true,
     "supplied_answers_read": false,
-    "byte_exact_replay": "pending"
+    "byte_exact_replay": true,
+    "replay_probability_and_availability_arrays_exact": true
   },
-  "limitation": "Private CV cache required; raw-video-only regeneration unverified. No supplied-match accuracy measured."
+  "limitation": "Private CV cache required; raw-video-only regeneration unverified. No supplied-match accuracy measured.",
+  "clean_replay_runtime_seconds": 74.29186120800296,
+  "full_match_missing_observation_fraction": 0.4292917383691469,
+  "clip_missing_observation_fraction": 0.08266666666666667
 }

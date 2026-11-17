@@ -156,3 +156,7 @@ Public code: [barca-possession-submission](https://github.com/christopherlii/bar
 Submitted CSV identity: SHA-256 `8f18e58701252edf3253ba8b977d83f16fc111b2a7f61faac3912a5a3c214f17`.
 The official format validator passed: 199,319 ordered rows, H=74,522,
 A=57,505, D=67,292. Full inference took 85.79s.
+
+A clean-checkout replay using the portable private CV bundle reproduced this
+CSV byte for byte, with identical probability and availability arrays. This
+verifies cache-based replay, not raw-video-only regeneration.

@@ -67,3 +67,10 @@ so it retains full-match temporal context. The earlier five-minute GBDT output
 is preserved separately and unchanged.
 
 CSV SHA-256: `8f18e58701252edf3253ba8b977d83f16fc111b2a7f61faac3912a5a3c214f17`.
+
+Clean-checkout replay with the separately installed pinned environment reproduced
+the CSV byte for byte in 74.29s. All probability and availability arrays
+also match exactly. The replay used the portable copy of the qualified private
+CV bundle, not its original local path. Full-match missing-observation fraction
+is 42.9292%. This verifies cache-based replay; it does not
+verify raw-video regeneration of that cache.
