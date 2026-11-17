@@ -1,0 +1,53 @@
+{
+  "source_revision": "64c87f601fa9f8709f1e2e5822ecc06a871bdfd7",
+  "train_seeds": [
+    230001,
+    230002,
+    230003,
+    230004,
+    230005,
+    230006,
+    230007,
+    230008
+  ],
+  "selection_seeds": [
+    230101,
+    230102,
+    230103,
+    230104,
+    230105,
+    230106,
+    230107,
+    230108,
+    230109,
+    230110
+  ],
+  "real_train": [
+    "DFL-MAT-J03WMX",
+    "DFL-MAT-J03WOH",
+    "DFL-MAT-J03WOY",
+    "DFL-MAT-J03WQQ",
+    "DFL-MAT-J03WR9"
+  ],
+  "real_selection_game": "J03WN1",
+  "parameter_count": 24292,
+  "actor_layout": "player20-float16-v1",
+  "global_columns": 56,
+  "receptive_radius": 541,
+  "initial_steps": 5000,
+  "fine_steps": 3000,
+  "batch_size": 8,
+  "window": 2176,
+  "fit_region": [
+    576,
+    1600
+  ],
+  "learning_rates": [
+    0.003,
+    0.001
+  ],
+  "model_sha256": "22a4d3894b4f2883f8b498ae53f99f109a1b687c03267fba6e31a37a9f86ff76",
+  "tree_sha256": "7242b3aa73a1c0337f05296049c2aa422e18a32623382b2376874c67381b384e",
+  "chosen": "boundary_scale_1",
+  "torch_version": "2.8.0"
+}

@@ -1,0 +1,9 @@
+{
+  "_comment": "A-priori generator variants for robustness checks: round stress values chosen by hand, not fitted to any match labels. Keys starting with _ are ignored.",
+  "default": {},
+  "sparse_ball": {"ball_missing_rate": 0.55, "contested_missing_boost": 2.5},
+  "confused_handover": {"handover_confusion_prob": 0.8},
+  "hidden_dead_ball": {"dead_out_hidden_weight": 0.5},
+  "_interceptions": "Round a-priori loose-ball rates, not fitted to any match labels.",
+  "interceptions": {"interception_prob": 0.4, "deflection_prob": 0.2}
+}

@@ -1,0 +1,38 @@
+{
+  "team": "remontada",
+  "repository": "https://github.com/christopherlii/barca-possession-submission",
+  "submission": "remontada.csv",
+  "technical_document": "remontada.md",
+  "rows": 199319,
+  "frame_start": 0,
+  "frame_end": 199318,
+  "label_counts": {
+    "H": 74465,
+    "A": 57596,
+    "D": 67258
+  },
+  "csv_sha256": "bea82d693e2ee603da66305523252056f53a8e20c8e28fc9f935e1ef18141b20",
+  "transitions": 572,
+  "possession_spells": 473,
+  "baseline_ball_observed": 113488,
+  "cv_variant": {
+    "cv_used": 1,
+    "prediction_disagreements": 1,
+    "csv_sha256": "c307a84f6352ec375ddacda54e7b9360421defaf730264bb08d1f6a9d14354a4",
+    "runtime_seconds": 62.90481129100226
+  },
+  "validation": {
+    "official_format": true,
+    "clean_environment_byte_exact": true,
+    "original_active_period_labels_exact": true,
+    "original_inputs_unchanged": true,
+    "supplied_answers_read": false
+  },
+  "runtime_seconds": {
+    "primary": 102.0624690830009,
+    "clean_reproduction": 135.6258456659998,
+    "clip_gbdt": 1.6837391669978388
+  },
+  "model": "frozen cycle018 player TCN + cycle005 histogram GBDT, 50/50, original decoder",
+  "limitation": "Primary is tracking-only for standalone reproducibility; CV-supported alternate requires additional private cache. No supplied-match accuracy measured."
+}
